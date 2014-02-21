@@ -14,6 +14,7 @@
 */
 
 using System;
+using System.Linq;
 using System.Reflection;
 
 namespace MongoDB.Bson.Serialization.Conventions
@@ -25,6 +26,27 @@ namespace MongoDB.Bson.Serialization.Conventions
     public class CamelCaseElementNameConvention : ConventionBase, IMemberMapConvention, IElementNameConvention
 #pragma warning restore 618
     {
+        // private fields
+        private readonly bool _handleVariableLengthPrefixes;
+
+        // constructors
+        /// <summary>
+        /// Initializes a new instance of the <see cref="CamelCaseElementNameConvention"/> class.
+        /// </summary>
+        public CamelCaseElementNameConvention()
+            : this(false)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="CamelCaseElementNameConvention"/> class.
+        /// </summary>
+        /// <param name="handleVariableLengthPrefixes">if set to <c>true</c> [handle variable length prefixes].</param>
+        public CamelCaseElementNameConvention(bool handleVariableLengthPrefixes)
+        {
+            _handleVariableLengthPrefixes = handleVariableLengthPrefixes;
+        }
+
         // public methods
         /// <summary>
         /// Applies a modification to the member map.
@@ -32,7 +54,7 @@ namespace MongoDB.Bson.Serialization.Conventions
         /// <param name="memberMap">The member map.</param>
         public void Apply(BsonMemberMap memberMap)
         {
-            string name = memberMap.MemberName;
+            var name = memberMap.MemberName;
             name = GetElementName(name);
             memberMap.SetElementName(name);
         }
@@ -45,8 +67,7 @@ namespace MongoDB.Bson.Serialization.Conventions
         [Obsolete("Use Apply instead.")]
         public string GetElementName(MemberInfo member)
         {
-            string name = member.Name;
-            return GetElementName(name);
+            return GetElementName(member.Name);
         }
 
         // private methods
@@ -62,7 +83,47 @@ namespace MongoDB.Bson.Serialization.Conventions
             }
             else 
             {
-                return Char.ToLowerInvariant(memberName[0]) + memberName.Substring(1);
+                return ToCamelCase(memberName);
+            }
+        }
+
+        private bool IsPartOfPrefix(char[] chars, int i)
+        {
+            if (i == 0 || i == chars.Length - 1)
+            {
+                return true;
+            }
+
+            var nextChar = chars[i + 1];
+            return IsUpperCase(nextChar);
+        }
+
+        private bool IsUpperCase(char c)
+        {
+            return c != char.ToLowerInvariant(c);
+        }
+
+        private string ToCamelCase(string name)
+        {
+            if (_handleVariableLengthPrefixes)
+            {
+                var chars = name.ToArray();
+                for (int i = 0; i < chars.Length; i++)
+                {
+                    if (IsPartOfPrefix(chars, i))
+                    {
+                        chars[i] = char.ToLowerInvariant(chars[i]);
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+                return new string(chars);
+            }
+            else
+            {
+                return Char.ToLowerInvariant(name[0]) + name.Substring(1);
             }
         }
     }

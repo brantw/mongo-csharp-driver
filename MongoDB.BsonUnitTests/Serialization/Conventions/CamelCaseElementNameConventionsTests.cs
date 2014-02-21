@@ -14,6 +14,7 @@
 */
 
 using MongoDB.Bson.Serialization;
+using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Bson.Serialization.Conventions;
 using NUnit.Framework;
 
@@ -28,27 +29,58 @@ namespace MongoDB.BsonUnitTests.Serialization.Conventions
             public int Age { get; set; }
             public string _DumbName { get; set; }
             public string lowerCase { get; set; }
+            public int X { get; set; }
+            public int XValue { get; set; }
+            public int XY { get; set; }
+            public int XYValue { get; set; }
+            public int IOStatus { get; set; }
+            public int TCPStatus { get; set; }
+            public int HTMLStatus { get; set; }
+            public int TCPIOStatus { get; set; }
         }
 
         [Test]
-        public void TestCamelCaseElementNameConvention()
+        [TestCase("FirstName", "firstName")]
+        [TestCase("Age", "age")]
+        [TestCase("_DumbName", "_DumbName")]
+        [TestCase("lowerCase", "lowerCase")]
+        [TestCase("X", "x")]
+        [TestCase("XValue", "xValue")]
+        [TestCase("XY", "xY")]
+        [TestCase("XYValue", "xYValue")]
+        [TestCase("IOStatus", "iOStatus")]
+        [TestCase("TCPStatus", "tCPStatus")]
+        [TestCase("HTMLStatus", "hTMLStatus")]
+        [TestCase("TCPIOStatus", "tCPIOStatus")]
+        public void TestCamelCaseElementNameConvention(string memberName, string expected)
         {
             var convention = new CamelCaseElementNameConvention();
             var classMap = new BsonClassMap<TestClass>();
-            var firstName = classMap.MapMember(x => x.FirstName);
-            var age = classMap.MapMember(x => x.Age);
-            var _dumbName = classMap.MapMember(x => x._DumbName);
-            var lowerCase = classMap.MapMember(x => x.lowerCase);
+            var memberMap = classMap.MapProperty(memberName);
+            convention.Apply(memberMap);
+            Assert.AreEqual(expected, memberMap.ElementName);
+        }
 
-            convention.Apply(firstName);
-            convention.Apply(age);
-            convention.Apply(_dumbName);
-            convention.Apply(lowerCase);
-
-            Assert.AreEqual("firstName", firstName.ElementName);
-            Assert.AreEqual("age", age.ElementName);
-            Assert.AreEqual("_DumbName", _dumbName.ElementName);
-            Assert.AreEqual("lowerCase", lowerCase.ElementName);
+        [Test]
+        [TestCase("FirstName", "firstName")]
+        [TestCase("Age", "age")]
+        [TestCase("_DumbName", "_DumbName")]
+        [TestCase("lowerCase", "lowerCase")]
+        [TestCase("X", "x")]
+        [TestCase("XValue", "xValue")]
+        [TestCase("XY", "xy")]
+        [TestCase("XYValue", "xyValue")]
+        [TestCase("IOStatus", "ioStatus")]
+        [TestCase("TCPStatus", "tcpStatus")]
+        [TestCase("HTMLStatus", "htmlStatus")]
+        [TestCase("TCPIOStatus", "tcpioStatus")]
+        public void TestCamelCaseElementNameConventionHandlingPrefixes(string memberName, string expected)
+        {
+            var convention = new CamelCaseElementNameConvention(true);
+            var classMap = new BsonClassMap<TestClass>();
+            var memberMap = classMap.MapProperty(memberName);
+            convention.Apply(memberMap);
+            Assert.AreEqual(expected, memberMap.ElementName);
         }
     }
 }
