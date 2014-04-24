@@ -261,6 +261,19 @@ namespace MongoDB.Driver.Builders
         }
 
         /// <summary>
+        /// Increments the named element by a value (see $inc).
+        /// </summary>
+        /// <param name="name">The name of the element to be incremented.</param>
+        /// <param name="value">The value to increment by.</param>
+        /// <returns>The builder (so method calls can be chained).</returns>
+#pragma warning disable 3001
+        public static UpdateBuilder Inc(string name, uint value)
+        {
+            return new UpdateBuilder().Inc(name, value);
+        }
+#pragma warning restore
+
+        /// <summary>
         /// Updates the named element if and only if the provided value is greater than its current value (see $max).
         /// </summary>
         /// <param name="name">The name of the element to be updated.</param>
@@ -1034,6 +1047,21 @@ namespace MongoDB.Driver.Builders
             Inc(name, BsonValue.Create(value));
             return this;
         }
+
+        /// <summary>
+        /// Increments the named element by a value (see $inc).
+        /// </summary>
+        /// <param name="name">The name of the element to be incremented.</param>
+        /// <param name="value">The value to increment by.</param>
+        /// <returns>The builder (so method calls can be chained).</returns>
+#pragma warning disable 3001
+        public UpdateBuilder Inc(string name, uint value)
+        {
+            if (name == null) { throw new ArgumentNullException("name"); }
+            Inc(name, BsonValue.Create(value));
+            return this;
+        }
+#pragma warning restore
 
         /// <summary>
         /// Updates the named element if and only if the provided value is greater than its current value (see $max).
@@ -2003,6 +2031,21 @@ namespace MongoDB.Driver.Builders
         }
 
         /// <summary>
+        /// Increments the named element by a value (see $inc).
+        /// </summary>
+        /// <param name="memberExpression">The member expression.</param>
+        /// <param name="value">The value to increment by.</param>
+        /// <returns>
+        /// The builder (so method calls can be chained).
+        /// </returns>
+#pragma warning disable 3001
+        public static UpdateBuilder<TDocument> Inc(Expression<Func<TDocument, uint>> memberExpression, uint value)
+        {
+            return new UpdateBuilder<TDocument>().Inc(memberExpression, value);
+        }
+#pragma warning restore
+
+        /// <summary>
         /// Updates the named element if and only if the provided value is greater than its current value (see $max).
         /// </summary>
         /// <typeparam name="TMember">The type of the member.</typeparam>
@@ -2591,6 +2634,28 @@ namespace MongoDB.Driver.Builders
             var serializedValue = _serializationInfoHelper.SerializeValue(serializationInfo, value);
             return Inc(serializationInfo, serializedValue);
         }
+
+        /// <summary>
+        /// Increments the named element by a value (see $inc).
+        /// </summary>
+        /// <param name="memberExpression">The member expression.</param>
+        /// <param name="value">The value to increment by.</param>
+        /// <returns>
+        /// The builder (so method calls can be chained).
+        /// </returns>
+#pragma warning disable 3001
+        public UpdateBuilder<TDocument> Inc(Expression<Func<TDocument, uint>> memberExpression, uint value)
+        {
+            if (memberExpression == null)
+            {
+                throw new ArgumentNullException("memberExpression");
+            }
+
+            var serializationInfo = _serializationInfoHelper.GetSerializationInfo(memberExpression);
+            var serializedValue = _serializationInfoHelper.SerializeValue(serializationInfo, value);
+            return Inc(serializationInfo, serializedValue);
+        }
+#pragma warning restore
 
         /// <summary>
         /// Updates the named element if and only if the provided value is greater than its current value (see $max).
