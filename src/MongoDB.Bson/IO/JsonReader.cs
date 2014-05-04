@@ -60,9 +60,8 @@ namespace MongoDB.Bson.IO
         /// Initializes a new instance of the JsonReader class.
         /// </summary>
         /// <param name="textReader">The TextReader.</param>
-        /// <param name="ownsReader">Whether the JsonReader owns the TextReader.</param>
-        public JsonReader(TextReader textReader, bool ownsReader = false)
-            : this(textReader, JsonReaderSettings.Defaults, ownsReader)
+        public JsonReader(TextReader textReader)
+            : this(textReader, JsonReaderSettings.Defaults)
         {
         }
 
@@ -71,8 +70,12 @@ namespace MongoDB.Bson.IO
         /// </summary>
         /// <param name="textReader">The TextReader.</param>
         /// <param name="settings">The reader settings.</param>
-        /// <param name="ownsReader">Whether the JsonReader owns the TextReader.</param>
-        public JsonReader(TextReader textReader, JsonReaderSettings settings, bool ownsReader = false)
+        public JsonReader(TextReader textReader, JsonReaderSettings settings)
+            : this(textReader, settings, false)
+        {
+        }
+
+        private JsonReader(TextReader textReader, JsonReaderSettings settings, bool ownsReader)
             : base(settings)
         {
             if (textReader == null)
@@ -87,7 +90,7 @@ namespace MongoDB.Bson.IO
             }
             else
             {
-                _bufferedReader = new BufferedTextReader(textReader, ownsReader: ownsReader);
+                _bufferedReader = new BufferedTextReader(textReader);
                 ownsReader = true;
             }
             _ownsReader = ownsReader;

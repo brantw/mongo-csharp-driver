@@ -26,7 +26,6 @@ namespace MongoDB.Bson.IO
     {
         // private fields
         private readonly StringBuilder _buffer;
-        private readonly bool _ownsReader;
         private int _position;
         private readonly TextReader _reader;
 
@@ -48,15 +47,13 @@ namespace MongoDB.Bson.IO
         /// Initializes a new instance of the <see cref="BufferedTextReader" /> class.
         /// </summary>
         /// <param name="reader">The reader.</param>
-        /// <param name="ownsReader">Whether the BufferedTextReader owns the wrapped TextReader.</param>
-        public BufferedTextReader(TextReader reader, bool ownsReader = true)
+        public BufferedTextReader(TextReader reader)
         {
             if (reader == null)
             {
                 throw new ArgumentNullException("reader");
             }
             _buffer = new StringBuilder(256); // start out with a reasonable initial capacity
-            _ownsReader = ownsReader;
             _reader = reader;
         }
 
@@ -271,20 +268,7 @@ namespace MongoDB.Bson.IO
         /// <param name="disposing">true to release both managed and unmanaged resources; false to release only unmanaged resources.</param>
         protected override void Dispose(bool disposing)
         {
-            if (disposing)
-            {
-                try
-                {
-                    if (_reader != null && _ownsReader)
-                    {
-                        _reader.Dispose();
-                    }
-                }
-                catch
-                {
-                    // ignore exceptions
-                }
-            }
+            // a BufferedTextReader does not own the wrapped TextReader
             base.Dispose(disposing);
         }
 
