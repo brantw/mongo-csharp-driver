@@ -28,11 +28,12 @@ namespace MongoDB.Bson.IO
     public class JsonReader : BsonReader
     {
         // private fields
-        private JsonBuffer _buffer;
-        private JsonReaderSettings _jsonReaderSettings; // same value as in base class just declared as derived class
+        private readonly BufferedTextReader _bufferedReader;
         private JsonReaderContext _context;
         private JsonToken _currentToken;
         private BsonValue _currentValue;
+        private readonly JsonReaderSettings _jsonReaderSettings; // same value as in base class just declared as derived class
+        private readonly bool _ownsReader;
         private JsonToken _pushedToken;
 
         // constructors
@@ -51,14 +52,46 @@ namespace MongoDB.Bson.IO
         /// <param name="json">The JSON string.</param>
         /// <param name="settings">The reader settings.</param>
         public JsonReader(string json, JsonReaderSettings settings)
+            : this(new BufferedTextReader(json), settings, true)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the JsonReader class.
+        /// </summary>
+        /// <param name="textReader">The TextReader.</param>
+        /// <param name="ownsReader">Whether the JsonReader owns the TextReader.</param>
+        public JsonReader(TextReader textReader, bool ownsReader = false)
+            : this(textReader, JsonReaderSettings.Defaults, ownsReader)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the JsonReader class.
+        /// </summary>
+        /// <param name="textReader">The TextReader.</param>
+        /// <param name="settings">The reader settings.</param>
+        /// <param name="ownsReader">Whether the JsonReader owns the TextReader.</param>
+        public JsonReader(TextReader textReader, JsonReaderSettings settings, bool ownsReader = false)
             : base(settings)
         {
-            if (json == null)
+            if (textReader == null)
             {
-                throw new ArgumentNullException("buffer");
+                throw new ArgumentNullException("textReader");
             }
 
-            _buffer = new JsonBuffer(json);
+            var bufferedReader = textReader as BufferedTextReader;
+            if (bufferedReader != null)
+            {
+                _bufferedReader = bufferedReader;
+            }
+            else
+            {
+                _bufferedReader = new BufferedTextReader(textReader, ownsReader: ownsReader);
+                ownsReader = true;
+            }
+            _ownsReader = ownsReader;
+
             _jsonReaderSettings = settings; // already frozen by base class
             _context = new JsonReaderContext(null, ContextType.TopLevel);
         }
@@ -79,7 +112,7 @@ namespace MongoDB.Bson.IO
         /// <returns>A bookmark.</returns>
         public override BsonReaderBookmark GetBookmark()
         {
-            return new JsonReaderBookmark(State, CurrentBsonType, CurrentName, _context, _currentToken, _currentValue, _pushedToken, _buffer.Position);
+            return new JsonReaderBookmark(State, CurrentBsonType, CurrentName, _context, _currentToken, _currentValue, _pushedToken, _bufferedReader.Position);
         }
 
         /// <summary>
@@ -627,7 +660,7 @@ namespace MongoDB.Bson.IO
             _currentToken = jsonReaderBookmark.CurrentToken;
             _currentValue = jsonReaderBookmark.CurrentValue;
             _pushedToken = jsonReaderBookmark.PushedToken;
-            _buffer.Position = jsonReaderBookmark.Position;
+            _bufferedReader.Position = jsonReaderBookmark.Position;
         }
 
         /// <summary>
@@ -749,6 +782,10 @@ namespace MongoDB.Bson.IO
                 try
                 {
                     Close();
+                    if (_ownsReader)
+                    {
+                        _bufferedReader.Dispose();
+                    }
                 }
                 catch { } // ignore exceptions
             }
@@ -1466,7 +1503,7 @@ namespace MongoDB.Bson.IO
             }
             else
             {
-                return JsonScanner.GetNextToken(_buffer);
+                return JsonScanner.GetNextToken(_bufferedReader);
             }
         }
 
