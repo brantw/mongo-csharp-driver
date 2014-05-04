@@ -223,6 +223,20 @@ namespace MongoDB.Bson.IO
         }
 
         /// <summary>
+        /// Resets the buffer (clears everything up to the current position).
+        /// </summary>
+        public void ResetBuffer()
+        {
+            // only trim the buffer if enough space will be reclaimed to make it worthwhile
+            var minimumTrimCount = 256; // TODO: make configurable?
+            if (_position >= minimumTrimCount)
+            {
+                _buffer.Remove(0, _position);
+                _position = 0;
+            }
+        }
+
+        /// <summary>
         /// Unreads one character (moving the current Position back one position).
         /// </summary>
         /// <param name="c">The character.</param>
@@ -281,10 +295,13 @@ namespace MongoDB.Bson.IO
             {
                 if (_reader != null)
                 {
-                    var line = _reader.ReadLine();
-                    if (line != null)
+                    var blockSize = 1024; // TODO: make configurable?
+                    var block = new char[blockSize];
+                    var actualCount = _reader.ReadBlock(block, 0, blockSize);
+
+                    if (actualCount > 0)
                     {
-                        _buffer.Append(line);
+                        _buffer.Append(block, 0, actualCount);
                     }
                 }
             }

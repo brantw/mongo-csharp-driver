@@ -116,6 +116,26 @@ namespace MongoDB.Bson.IO
         }
 
         /// <summary>
+        /// Determines whether this reader is at end of file.
+        /// </summary>
+        /// <returns>
+        /// Whether this reader is at end of file.
+        /// </returns>
+        public override bool IsAtEndOfFile()
+        {
+            int c;
+            while ((c = _bufferedReader.Read()) != -1)
+            {
+                if (!char.IsWhiteSpace((char)c))
+                {
+                    _bufferedReader.Unread(c);
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        /// <summary>
         /// Reads BSON binary data from the reader.
         /// </summary>
         /// <returns>A BsonBinaryData.</returns>
@@ -412,10 +432,18 @@ namespace MongoDB.Bson.IO
             _context = _context.PopContext();
             switch (_context.ContextType)
             {
-                case ContextType.Array: State = BsonReaderState.Type; break;
-                case ContextType.Document: State = BsonReaderState.Type; break;
-                case ContextType.TopLevel: State = BsonReaderState.Done; break;
-                default: throw new BsonInternalException("Unexpected ContextType.");
+                case ContextType.Array:
+                    State = BsonReaderState.Type;
+                    break;
+                case ContextType.Document:
+                    State = BsonReaderState.Type;
+                    break;
+                case ContextType.TopLevel:
+                    _bufferedReader.ResetBuffer();
+                    State = BsonReaderState.Done;
+                    break;
+                default:
+                    throw new BsonInternalException("Unexpected ContextType.");
             }
 
             if (_context.ContextType == ContextType.Array || _context.ContextType == ContextType.Document)
@@ -455,10 +483,18 @@ namespace MongoDB.Bson.IO
             }
             switch (_context.ContextType)
             {
-                case ContextType.Array: State = BsonReaderState.Type; break;
-                case ContextType.Document: State = BsonReaderState.Type; break;
-                case ContextType.TopLevel: State = BsonReaderState.Done; break;
-                default: throw new BsonInternalException("Unexpected ContextType");
+                case ContextType.Array:
+                    State = BsonReaderState.Type;
+                    break;
+                case ContextType.Document:
+                    State = BsonReaderState.Type;
+                    break;
+                case ContextType.TopLevel:
+                    _bufferedReader.ResetBuffer();
+                    State = BsonReaderState.Done;
+                    break;
+                default:
+                    throw new BsonInternalException("Unexpected ContextType");
             }
 
             if (_context.ContextType == ContextType.Array || _context.ContextType == ContextType.Document)
