@@ -23,8 +23,34 @@ namespace MongoDB.Bson.Serialization.Serializers
     /// </summary>
     public class VersionSerializer : SealedClassSerializerBase<Version>, IRepresentationConfigurable<VersionSerializer>
     {
+        // private static fields
+        private static readonly ClassDefinition<Version> __classDefinition;
+
         // private fields
         private readonly BsonType _representation;
+
+        // static constructor
+        static VersionSerializer()
+        {
+            var int32Serializer = new Int32Serializer();
+            __classDefinition = new ClassDefinition<Version, int, int, int, int>
+            (
+                new MemberDefinition<int>(0, "Major", int32Serializer),
+                new MemberDefinition<int>(1, "Minor", int32Serializer),
+                new MemberDefinition<int>(2, "Build", int32Serializer, isRequired: false),
+                new MemberDefinition<int>(3, "Revision", int32Serializer, isRequired: false),
+                (major, minor, build, revision, missingMemberFlags) =>
+                {
+                    switch (missingMemberFlags)
+                    {
+                        case 0x00: return new Version(major, minor, build, revision);
+                        case 0x08: return new Version(major, minor, build);
+                        case 0x0c: return new Version(major, minor);
+                        default: throw new BsonInternalException(); // should never happen
+                    }
+                }
+            );
+        }
 
         // constructors
         /// <summary>
@@ -76,51 +102,12 @@ namespace MongoDB.Bson.Serialization.Serializers
         protected override Version DeserializeValue(BsonDeserializationContext context)
         {
             var bsonReader = context.Reader;
-            string message;
 
             BsonType bsonType = bsonReader.GetCurrentBsonType();
             switch (bsonType)
             {
                 case BsonType.Document:
-                    bsonReader.ReadStartDocument();
-                    int major = -1, minor = -1, build = -1, revision = -1;
-                    while (bsonReader.ReadBsonType() != BsonType.EndOfDocument)
-                    {
-                        var name = bsonReader.ReadName();
-                        switch (name)
-                        {
-                            case "Major": major = bsonReader.ReadInt32(); break;
-                            case "Minor": minor = bsonReader.ReadInt32(); break;
-                            case "Build": build = bsonReader.ReadInt32(); break;
-                            case "Revision": revision = bsonReader.ReadInt32(); break;
-                            default:
-                                message = string.Format("Unrecognized element '{0}' while deserializing a Version value.", name);
-                                throw new FileFormatException(message);
-                        }
-                    }
-                    bsonReader.ReadEndDocument();
-                    if (major == -1)
-                    {
-                        message = string.Format("Version missing Major element.");
-                        throw new FileFormatException(message);
-                    }
-                    else if (minor == -1)
-                    {
-                        message = string.Format("Version missing Minor element.");
-                        throw new FileFormatException(message);
-                    }
-                    else if (build == -1)
-                    {
-                        return new Version(major, minor);
-                    }
-                    else if (revision == -1)
-                    {
-                        return new Version(major, minor, build);
-                    }
-                    else
-                    {
-                        return new Version(major, minor, build, revision);
-                    }
+                    return __classDefinition.Deserialize(context);
 
                 case BsonType.String:
                     return new Version(bsonReader.ReadString());
