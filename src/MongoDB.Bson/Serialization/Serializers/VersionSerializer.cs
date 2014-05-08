@@ -23,8 +23,24 @@ namespace MongoDB.Bson.Serialization.Serializers
     /// </summary>
     public class VersionSerializer : SealedClassSerializerBase<Version>, IRepresentationConfigurable<VersionSerializer>
     {
+        // private static fields
+        private static readonly SerializerHelper __helper;
+
         // private fields
+        private readonly Int32Serializer _int32Serializer = new Int32Serializer();
         private readonly BsonType _representation;
+
+        // static constructor
+        static VersionSerializer()
+        {
+            __helper = new SerializerHelper
+            (
+                new SerializerHelper.MemberInfo("Major"),
+                new SerializerHelper.MemberInfo("Minor"),
+                new SerializerHelper.MemberInfo("Build", isOptional: true),
+                new SerializerHelper.MemberInfo("Revision", isOptional: true)
+            );
+        }
 
         // constructors
         /// <summary>
@@ -76,50 +92,28 @@ namespace MongoDB.Bson.Serialization.Serializers
         protected override Version DeserializeValue(BsonDeserializationContext context)
         {
             var bsonReader = context.Reader;
-            string message;
 
             BsonType bsonType = bsonReader.GetCurrentBsonType();
             switch (bsonType)
             {
                 case BsonType.Document:
-                    bsonReader.ReadStartDocument();
-                    int major = -1, minor = -1, build = -1, revision = -1;
-                    while (bsonReader.ReadBsonType() != BsonType.EndOfDocument)
+                    int major = 0, minor = 0, build = 0, revision = 0;
+                    var foundMemberFlags = (Members)__helper.DeserializeMembers(context, memberFlag =>
                     {
-                        var name = bsonReader.ReadName();
-                        switch (name)
+                        switch ((Members)memberFlag)
                         {
-                            case "Major": major = bsonReader.ReadInt32(); break;
-                            case "Minor": minor = bsonReader.ReadInt32(); break;
-                            case "Build": build = bsonReader.ReadInt32(); break;
-                            case "Revision": revision = bsonReader.ReadInt32(); break;
-                            default:
-                                message = string.Format("Unrecognized element '{0}' while deserializing a Version value.", name);
-                                throw new FileFormatException(message);
+                            case Members.Major: major = context.DeserializeWithChildContext(_int32Serializer); break;
+                            case Members.Minor: minor = context.DeserializeWithChildContext(_int32Serializer); break;
+                            case Members.Build: build = context.DeserializeWithChildContext(_int32Serializer); break;
+                            case Members.Revision: revision = context.DeserializeWithChildContext(_int32Serializer); break;
                         }
-                    }
-                    bsonReader.ReadEndDocument();
-                    if (major == -1)
+                    });
+                    switch (foundMemberFlags)
                     {
-                        message = string.Format("Version missing Major element.");
-                        throw new FileFormatException(message);
-                    }
-                    else if (minor == -1)
-                    {
-                        message = string.Format("Version missing Minor element.");
-                        throw new FileFormatException(message);
-                    }
-                    else if (build == -1)
-                    {
-                        return new Version(major, minor);
-                    }
-                    else if (revision == -1)
-                    {
-                        return new Version(major, minor, build);
-                    }
-                    else
-                    {
-                        return new Version(major, minor, build, revision);
+                        case Members.MajorMinor: return new Version(major, minor);
+                        case Members.MajorMinorBuild: return new Version(major, minor, build);
+                        case Members.All: return new Version(major, minor, build, revision);
+                        default: throw new BsonInternalException();
                     }
 
                 case BsonType.String:
@@ -187,6 +181,20 @@ namespace MongoDB.Bson.Serialization.Serializers
         IBsonSerializer IRepresentationConfigurable.WithRepresentation(BsonType representation)
         {
             return WithRepresentation(representation);
+        }
+
+        // nested types
+        [Flags]
+        private enum Members
+        {
+            Major = 1,
+            Minor = 2,
+            Build = 4,
+            Revision = 8,
+
+            All = Major | Minor | Build | Revision,
+            MajorMinor = Major | Minor,
+            MajorMinorBuild = Major | Minor | Build
         }
     }
 }
