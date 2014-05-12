@@ -16,6 +16,7 @@
 using System.Collections.Generic;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
+using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 
 namespace MongoDB.Bson.Tests.Jira
@@ -32,10 +33,12 @@ namespace MongoDB.Bson.Tests.Jira
         [Test]
         public void TestArray()
         {
+            var jArray = new JArray { new[] {"abc", "def"} };
+
             var c = new C
             {
                 Id = 1,
-                Values = new Dictionary<string, dynamic> { { "xyz", new [] { "abc", "def" } } } // Array
+                Values = new Dictionary<string, dynamic> { { "xyz", jArray } }
             };
             var json = c.ToJson();
             var expected = "{ '_id' : 1, 'Values' : { 'xyz' : { '_t' : 'System.String[]', '_v' : ['abc', 'def'] } } }".Replace("'", "\"");
