@@ -13,6 +13,7 @@
 * limitations under the License.
 */
 
+using System.Collections.Generic;
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Serializers;
 
@@ -24,16 +25,16 @@ namespace MongoDB.Driver.GeoJsonObjectModel.Serializers
     /// <typeparam name="TCoordinates">The type of the coordinates.</typeparam>
     public class GeoJsonMultiPointSerializer<TCoordinates> : ClassSerializerBase<GeoJsonMultiPoint<TCoordinates>> where TCoordinates : GeoJsonCoordinates
     {
-        // public methods
+        // protected methods
         /// <summary>
         /// Deserializes a value.
         /// </summary>
         /// <param name="context">The deserialization context.</param>
         /// <returns>The value.</returns>
-        public override GeoJsonMultiPoint<TCoordinates> Deserialize(BsonDeserializationContext context)
+        protected override GeoJsonMultiPoint<TCoordinates> DeserializeValue(BsonDeserializationContext context)
         {
             var helper = new Helper();
-            return (GeoJsonMultiPoint<TCoordinates>)helper.Deserialize(context);
+            return (GeoJsonMultiPoint<TCoordinates>)helper.DeserializeValue(context);
         }
 
         /// <summary>
@@ -50,13 +51,20 @@ namespace MongoDB.Driver.GeoJsonObjectModel.Serializers
         // nested classes
         internal class Helper : GeoJsonGeometrySerializer<TCoordinates>.Helper
         {
+            // internal constants
+            new internal static class Flags
+            {
+                public const long BaseMaxValue = GeoJsonGeometrySerializer<TCoordinates>.Helper.Flags.MaxValue;
+                public const long Coordinates = BaseMaxValue << 1;
+            }
+
             // private fields
             private readonly IBsonSerializer<GeoJsonMultiPointCoordinates<TCoordinates>> _coordinatesSerializer = BsonSerializer.LookupSerializer<GeoJsonMultiPointCoordinates<TCoordinates>>();
             private GeoJsonMultiPointCoordinates<TCoordinates> _coordinates;
 
             // constructors
             public Helper()
-                : base(typeof(GeoJsonMultiPoint<TCoordinates>), "MultiPoint", new GeoJsonObjectArgs<TCoordinates>())
+                : base(typeof(GeoJsonMultiPoint<TCoordinates>), "MultiPoint", new GeoJsonObjectArgs<TCoordinates>(), CreateMembers())
             {
             }
 
@@ -65,6 +73,15 @@ namespace MongoDB.Driver.GeoJsonObjectModel.Serializers
             {
                 get { return _coordinates; }
                 set { _coordinates = value; }
+            }
+
+            // private static methods
+            private static IEnumerable<SerializerHelper.Member> CreateMembers()
+            {
+                return new[]
+                {
+                    new SerializerHelper.Member("coordinates", Flags.Coordinates)
+                };
             }
 
             // protected methods
@@ -77,13 +94,14 @@ namespace MongoDB.Driver.GeoJsonObjectModel.Serializers
             /// Deserializes a field.
             /// </summary>
             /// <param name="context">The context.</param>
-            /// <param name="name">The name.</param>
-            protected override void DeserializeField(BsonDeserializationContext context, string name)
+            /// <param name="elementName">The element name.</param>
+            /// <param name="flag">The member flag.</param>
+            protected override void DeserializeField(BsonDeserializationContext context, string elementName, long flag)
             {
-                switch (name)
+                switch (flag)
                 {
-                    case "coordinates": _coordinates = DeserializeCoordinates(context); break;
-                    default: base.DeserializeField(context, name); break;
+                    case Flags.Coordinates: _coordinates = DeserializeCoordinates(context); break;
+                    default: base.DeserializeField(context, elementName, flag); break;
                 }
             }
 

@@ -13,6 +13,7 @@
 * limitations under the License.
 */
 
+using System.Collections.Generic;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Serializers;
@@ -27,16 +28,16 @@ namespace MongoDB.Driver.GeoJsonObjectModel.Serializers
     {
         // private fields
 
-        // public methods
+        // protected methods
         /// <summary>
         /// Deserializes a value.
         /// </summary>
         /// <param name="context">The deserialization context.</param>
         /// <returns>The value.</returns>
-        public override GeoJsonFeature<TCoordinates> Deserialize(BsonDeserializationContext context)
+        protected override GeoJsonFeature<TCoordinates> DeserializeValue(BsonDeserializationContext context)
         {
             var helper = new Helper();
-            return (GeoJsonFeature<TCoordinates>)helper.Deserialize(context);
+            return (GeoJsonFeature<TCoordinates>)helper.DeserializeValue(context);
         }
 
         /// <summary>
@@ -53,13 +54,22 @@ namespace MongoDB.Driver.GeoJsonObjectModel.Serializers
         // nested classes
         internal class Helper : GeoJsonObjectSerializer<TCoordinates>.Helper
         {
+            // internal constants
+            new internal static class Flags
+            {
+                public const long BaseMaxValue = GeoJsonObjectSerializer<TCoordinates>.Helper.Flags.MaxValue;
+                public const long Geometry = BaseMaxValue << 1;
+                public const long Id = BaseMaxValue << 2;
+                public const long Properties = BaseMaxValue << 3;
+            }
+
             // private fields
             private readonly IBsonSerializer<GeoJsonGeometry<TCoordinates>> _geometrySerializer = BsonSerializer.LookupSerializer<GeoJsonGeometry<TCoordinates>>();
             private GeoJsonGeometry<TCoordinates> _geometry;
 
             // constructors
             public Helper()
-                : base(typeof(GeoJsonFeature<TCoordinates>), "Feature", new GeoJsonFeatureArgs<TCoordinates>())
+                : base(typeof(GeoJsonFeature<TCoordinates>), "Feature", new GeoJsonFeatureArgs<TCoordinates>(), CreateMembers())
             {
             }
 
@@ -75,6 +85,17 @@ namespace MongoDB.Driver.GeoJsonObjectModel.Serializers
                 set { _geometry = value; }
             }
 
+            // private static methods
+            private static IEnumerable<SerializerHelper.Member> CreateMembers()
+            {
+                return new[]
+                {
+                    new SerializerHelper.Member("geometry", Flags.Geometry),
+                    new SerializerHelper.Member("id", Flags.Id, isOptional: true),
+                    new SerializerHelper.Member("properties", Flags.Properties, isOptional: true)
+                };
+            }
+
             // protected methods
             protected override GeoJsonObject<TCoordinates> CreateObject()
             {
@@ -85,15 +106,16 @@ namespace MongoDB.Driver.GeoJsonObjectModel.Serializers
             /// Deserializes a field.
             /// </summary>
             /// <param name="context">The context.</param>
-            /// <param name="name">The name.</param>
-            protected override void DeserializeField(BsonDeserializationContext context, string name)
+            /// <param name="elementName">The element name.</param>
+            /// <param name="flag">The member flag.</param>
+            protected override void DeserializeField(BsonDeserializationContext context, string elementName, long flag)
             {
-                switch (name)
+                switch (flag)
                 {
-                    case "geometry": _geometry = DeserializeGeometry(context); break;
-                    case "id": FeatureArgs.Id = DeserializeId(context); break;
-                    case "properties": FeatureArgs.Properties = DeserializeProperties(context); break;
-                    default: base.DeserializeField(context, name); break;
+                    case Flags.Geometry: _geometry = DeserializeGeometry(context); break;
+                    case Flags.Id: FeatureArgs.Id = DeserializeId(context); break;
+                    case Flags.Properties: FeatureArgs.Properties = DeserializeProperties(context); break;
+                    default: base.DeserializeField(context, elementName, flag); break;
                 }
             }
 

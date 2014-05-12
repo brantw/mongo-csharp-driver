@@ -26,16 +26,16 @@ namespace MongoDB.Driver.GeoJsonObjectModel.Serializers
     /// <typeparam name="TCoordinates">The type of the coordinates.</typeparam>
     public class GeoJsonGeometryCollectionSerializer<TCoordinates> : ClassSerializerBase<GeoJsonGeometryCollection<TCoordinates>> where TCoordinates : GeoJsonCoordinates
     {
-        // public methods
+        // protected methods
         /// <summary>
         /// Deserializes a value.
         /// </summary>
         /// <param name="context">The deserialization context.</param>
         /// <returns>The value.</returns>
-        public override GeoJsonGeometryCollection<TCoordinates> Deserialize(BsonDeserializationContext context)
+        protected override GeoJsonGeometryCollection<TCoordinates> DeserializeValue(BsonDeserializationContext context)
         {
             var helper = new Helper();
-            return (GeoJsonGeometryCollection<TCoordinates>)helper.Deserialize(context);
+            return (GeoJsonGeometryCollection<TCoordinates>)helper.DeserializeValue(context);
         }
 
         /// <summary>
@@ -52,13 +52,20 @@ namespace MongoDB.Driver.GeoJsonObjectModel.Serializers
         // nested classes
         internal class Helper : GeoJsonGeometrySerializer<TCoordinates>.Helper
         {
+            // internal constants
+            new internal static class Flags
+            {
+                public const long BaseMaxValue = GeoJsonGeometrySerializer<TCoordinates>.Helper.Flags.MaxValue;
+                public const long Geometries = BaseMaxValue << 1;
+            }
+
             // private fields
             private readonly IBsonSerializer<GeoJsonGeometry<TCoordinates>> _geometrySerializer = BsonSerializer.LookupSerializer<GeoJsonGeometry<TCoordinates>>();
             private List<GeoJsonGeometry<TCoordinates>> _geometries;
 
             // constructors
             public Helper()
-                : base(typeof(GeoJsonGeometryCollection<TCoordinates>), "GeometryCollection", new GeoJsonObjectArgs<TCoordinates>())
+                : base(typeof(GeoJsonGeometryCollection<TCoordinates>), "GeometryCollection", new GeoJsonObjectArgs<TCoordinates>(), CreateMembers())
             {
             }
 
@@ -74,18 +81,28 @@ namespace MongoDB.Driver.GeoJsonObjectModel.Serializers
                 return new GeoJsonGeometryCollection<TCoordinates>(Args, _geometries);
             }
 
+            // private static methods
+            private static IEnumerable<SerializerHelper.Member> CreateMembers()
+            {
+                return new[]
+                {
+                    new SerializerHelper.Member("geometries", Flags.Geometries)
+                };
+            }
+
             // protected methods
             /// <summary>
             /// Deserializes a field.
             /// </summary>
             /// <param name="context">The context.</param>
-            /// <param name="name">The name.</param>
-            protected override void DeserializeField(BsonDeserializationContext context, string name)
+            /// <param name="elementName">The element name.</param>
+            /// <param name="flag">The member flag.</param>
+            protected override void DeserializeField(BsonDeserializationContext context, string elementName, long flag)
             {
-                switch (name)
+                switch (flag)
                 {
-                    case "geometries": _geometries = DeserializeGeometries(context); break;
-                    default: base.DeserializeField(context, name); break;
+                    case Flags.Geometries: _geometries = DeserializeGeometries(context); break;
+                    default: base.DeserializeField(context, elementName, flag); break;
                 }
             }
 
